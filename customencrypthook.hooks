@@ -1,0 +1,45 @@
+#!/usr/bin/ash
+
+# file: /etc/initcpio/initcpio/hooks/customencrypthook
+# source: https://www.reddit.com/r/archlinux/comments/7np36m/detached_luks_header_full_disk_encryption_with/
+# /usr/bin/ash is not a typo.
+
+run_hook() {
+  modprobe -a -q dm-crypt >/dev/null 2>&1
+  modprobe loop
+
+  [ "${quiet}" = "y" ] && CSQUIET=">/dev/null"
+
+    # The Xs represent your USB drive id found by "ls -lth /dev/disk/by-id"
+    while [ ! -L '/dev/disk/by-id/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-part2' ]; do
+    
+      echo 'Waiting for USB'
+      sleep 1
+      
+    done
+
+  cryptsetup open /dev/disk/by-id/XXXXXXXXXXXXXXXXXXXXXXXX-part2 cryptboot
+
+  mkdir -p /mnt
+
+  mount /dev/mapper/cryptboot /mnt
+  
+  cd /mnt
+
+  cryptsetup open key.img lukskey
+
+  # The Ys represent your main hard drive found by "ls -lth /dev/disk/by-id", N is your offset
+  cryptsetup --header header.img \
+             --key-file=/dev/mapper/lukskey \
+             --keyfile-offset=N \
+             --keyfile-size=8192 \
+             open \
+             /dev/disk/by-id/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY enc
+
+  cd /
+
+  cryptsetup close lukskey
+  
+  umount /mnt
+  
+}
